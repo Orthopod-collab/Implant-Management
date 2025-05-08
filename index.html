@@ -18,6 +18,8 @@
       color: white;
       padding: 2rem;
       text-align: center;
+      height: 300px; /* Set a specific height for the header */
+      background-position: center center;
     }
 
     header h1 {
@@ -29,18 +31,51 @@
       border-radius: 8px;
     }
 
-    .scanner {
-      padding: 1rem;
+    .search-container {
       text-align: center;
+      padding: 1rem;
     }
 
-    .scanner input {
-      padding: 1rem;
-      font-size: 1.2rem;
-      width: 80%;
+    .search-container input {
+      padding: 0.5rem;
+      font-size: 1rem;
+      width: 70%;
       max-width: 400px;
       border-radius: 8px;
       border: 1px solid #ccc;
+      margin-right: 10px;
+    }
+
+    .search-container button {
+      padding: 0.5rem 1rem;
+      font-size: 1.2rem;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .search-container button img {
+      width: 20px;
+      height: 20px;
+      margin-right: 5px;
+    }
+
+    .filter-buttons {
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    .filter-buttons button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      margin: 0 5px;
+      cursor: pointer;
     }
 
     .grid {
@@ -48,6 +83,7 @@
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 1rem;
       padding: 1rem;
+      display: none; /* Hide the grid until search is clicked */
     }
 
     .card {
@@ -56,9 +92,10 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       padding: 1rem;
       transition: border 0.3s, box-shadow 0.3s;
+      cursor: pointer;
     }
 
-    .card.highlight {
+    .card:hover {
       border: 3px solid #4caf50;
       box-shadow: 0 0 15px #4caf50;
     }
@@ -67,12 +104,6 @@
       font-size: 1.2rem;
       margin: 0 0 0.5rem;
       color: #222;
-    }
-
-    .card .details {
-      font-size: 0.9rem;
-      color: #555;
-      margin-bottom: 0.5rem;
     }
 
     .counter {
@@ -98,6 +129,49 @@
       min-width: 30px;
       text-align: center;
     }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+      padding: 2rem;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+      position: relative;
+    }
+
+    /* Close button styles */
+    .modal .close {
+      background-color: #f44336;
+      color: white;
+      padding: 0.5rem;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      cursor: pointer;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    .modal input {
+      padding: 1rem;
+      font-size: 1.2rem;
+      width: 100%;
+      max-width: 400px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
   </style>
 </head>
 <body>
@@ -106,20 +180,52 @@
     <h1>Implant Management</h1>
   </header>
 
-  <div class="scanner">
-    <input type="text" id="barcodeInput" placeholder="Scan or Enter Item ID">
+  <div class="search-container">
+    <input type="text" id="searchBar" placeholder="Search..." />
+    <button onclick="searchItems()"><img src="https://img.icons8.com/ios/452/search.png" alt="Search Icon">Search</button>
+  </div>
+
+  <div class="filter-buttons">
+    <button onclick="setFilter('Item')">Item</button>
+    <button onclick="setFilter('Item ID')">Item ID</button>
+    <button onclick="setFilter('Supplier')">Supplier</button>
+    <button onclick="setFilter('System')">System</button>
   </div>
 
   <div class="grid" id="inventoryGrid">
     <!-- Inventory items will be injected here -->
   </div>
 
+  <div class="modal" id="itemModal">
+    <div class="modal-content">
+      <button class="close" id="closeModalBtn">&times;</button>
+      <h2 id="modalItemName"></h2>
+      <div id="modalDetails"></div>
+      <div class="counter">
+        <button onclick="updateStock(-1)">−</button>
+        <span id="modalQty">0</span>
+        <button onclick="updateStock(1)">+</button>
+      </div>
+      <br><br>
+      <input type="text" id="barcodeInput" placeholder="Scan Item ID to Adjust Stock">
+    </div>
+  </div>
+
   <script>
     const dbUrl = "https://implant-e7d3a-default-rtdb.firebaseio.com/inventory.json";
     let inventoryData = {};
 
-    const barcodeInput = document.getElementById("barcodeInput");
     const inventoryGrid = document.getElementById("inventoryGrid");
+    const itemModal = document.getElementById("itemModal");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const modalItemName = document.getElementById("modalItemName");
+    const modalDetails = document.getElementById("modalDetails");
+    const modalQty = document.getElementById("modalQty");
+    const barcodeInput = document.getElementById("barcodeInput");
+    const searchBar = document.getElementById("searchBar");
+
+    let currentItemKey = "";
+    let filterBy = "Item";  // Default filter is Item
 
     function createCard(item, key) {
       const card = document.createElement("div");
@@ -129,34 +235,56 @@
       const stockQty = parseInt(item["Stock Qty"]) || 0;
 
       card.innerHTML = `
-        <h2>${item.Item || "Unnamed Item"}</h2>
-        <div class="details"><strong>ID:</strong> ${item["Item ID"] || "N/A"}</div>
-        <div class="details"><strong>Qty:</strong> <span id="qty-${key}">${stockQty}</span></div>
-        <div class="details"><strong>Storage:</strong> ${item.Storage || "N/A"}</div>
-        <div class="counter">
-          <button onclick="updateStock('${key}', -1)">−</button>
-          <span>${stockQty}</span>
-          <button onclick="updateStock('${key}', 1)">+</button>
-        </div>
+        <h2 onclick="openModal('${key}')">${item.Item || "Unnamed Item"}</h2>
       `;
       return card;
     }
 
-    function updateStock(key, delta) {
-      const item = inventoryData[key];
+    function openModal(itemKey) {
+      const item = inventoryData[itemKey];
       if (!item) return;
 
-      const qtySpan = document.getElementById(`qty-${key}`);
+      currentItemKey = itemKey;
+      modalItemName.textContent = item.Item || "Unnamed Item";
+
+      let detailsHtml = `
+        <p><strong>Item ID:</strong> ${item["Item ID"] || "N/A"}</p>
+        <p><strong>Stock Qty:</strong> <span id="qty-${itemKey}">${item["Stock Qty"] || 0}</span></p>
+        <p><strong>Storage:</strong> ${item.Storage || "N/A"}</p>
+        <p><strong>Usage:</strong> ${item.Usage || "N/A"}</p>
+        <p><strong>Consignment:</strong> ${item.Cons || "N/A"}</p>
+        <p><strong>Status:</strong> ${item.Status || "N/A"}</p>
+        <p><strong>Audit Frequency:</strong> ${item["Audit Freq"] || "N/A"}</p>
+        <p><strong>Last Checked:</strong> ${item["Last Chk"] || "N/A"}</p>
+        <p><strong>Comments:</strong> ${item.Comments || "N/A"}</p>
+      `;
+      modalDetails.innerHTML = detailsHtml;
+
+      modalQty.textContent = item["Stock Qty"] || 0;
+
+      itemModal.style.display = "block";
+    }
+
+    function closeModal() {
+      itemModal.style.display = "none";
+    }
+
+    function updateStock(delta) {
+      const item = inventoryData[currentItemKey];
+      if (!item) return;
+
+      const qtySpan = document.getElementById(`qty-${currentItemKey}`);
       let currentQty = parseInt(item["Stock Qty"]) || 0;
       let newQty = currentQty + delta;
       if (newQty < 0) newQty = 0;
 
       // Update UI
       qtySpan.textContent = newQty;
-      inventoryData[key]["Stock Qty"] = newQty;
+      modalQty.textContent = newQty;
+      inventoryData[currentItemKey]["Stock Qty"] = newQty;
 
       // Update Firebase
-      fetch(`https://implant-e7d3a-default-rtdb.firebaseio.com/inventory/${key}.json`, {
+      fetch(`https://implant-e7d3a-default-rtdb.firebaseio.com/inventory/${currentItemKey}.json`, {
         method: "PATCH",
         body: JSON.stringify({ "Stock Qty": newQty }),
         headers: { "Content-Type": "application/json" }
@@ -178,28 +306,31 @@
         });
     }
 
-    barcodeInput.addEventListener("keypress", function (e) {
-      if (e.key === "Enter") {
-        const scannedID = barcodeInput.value.trim();
-        barcodeInput.value = "";
+    function setFilter(filter) {
+      filterBy = filter;
+    }
 
-        const itemKey = Object.keys(inventoryData).find(
-          key => inventoryData[key]["Item ID"] === scannedID
-        );
+    function searchItems() {
+      const searchTerm = searchBar.value.toLowerCase();
+      if (!searchTerm.trim()) return;
 
-        if (itemKey) {
-          updateStock(itemKey, 1);
+      const cards = document.querySelectorAll(".card");
+      inventoryGrid.style.display = "grid";  // Show grid once search is triggered
 
-          const card = document.getElementById(`card-${itemKey}`);
-          if (card) {
-            card.classList.add("highlight");
-            setTimeout(() => card.classList.remove("highlight"), 2000);
-          }
+      cards.forEach(card => {
+        const itemKey = card.id.replace("card-", "");
+        const item = inventoryData[itemKey];
+        const itemField = item[filterBy] ? item[filterBy].toLowerCase() : "";
+
+        if (itemField.includes(searchTerm)) {
+          card.classList.add("show");
         } else {
-          alert("Item not found.");
+          card.classList.remove("show");
         }
-      }
-    });
+      });
+    }
+
+    closeModalBtn.addEventListener("click", closeModal);
 
     loadInventory();
   </script>
