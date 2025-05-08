@@ -1,43 +1,207 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Barcode Scanner Inventory</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Implant Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      background-color: #f4f4f4;
+    }
+
+    header {
+      background: url('https://cdn.sanity.io/images/0vv8moc6/hcplive/78eda403dd9651e86acc0a924c185a3e257228c7-5980x3829.jpg?fit=crop&auto=format') no-repeat center center;
+      background-size: cover;
+      color: white;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      margin: 0;
+      background-color: rgba(0,0,0,0.5);
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+    }
+
+    .scanner {
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .scanner input {
+      padding: 1rem;
+      font-size: 1.2rem;
+      width: 80%;
+      max-width: 400px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 1rem;
+      transition: border 0.3s, box-shadow 0.3s;
+    }
+
+    .card.highlight {
+      border: 3px solid #4caf50;
+      box-shadow: 0 0 15px #4caf50;
+    }
+
+    .card h2 {
+      font-size: 1.2rem;
+      margin: 0 0 0.5rem;
+      color: #222;
+    }
+
+    .card .details {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 0.5rem;
+    }
+
+    .counter {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 0.5rem;
+    }
+
+    .counter button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      font-size: 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .counter span {
+      margin: 0 1rem;
+      font-size: 1.1rem;
+      min-width: 30px;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-  <h1>Scan or Enter Item</h1>
 
-  <input type="text" id="itemId" placeholder="Item ID">
-  <input type="text" id="itemName" placeholder="Item Name">
-  <input type="number" id="stockQty" placeholder="Stock Quantity">
-  <button onclick="submitToFirebase()">Submit</button>
+  <header>
+    <h1>Implant Management</h1>
+  </header>
+
+  <div class="scanner">
+    <input type="text" id="barcodeInput" placeholder="Scan or Enter Item ID">
+  </div>
+
+  <div class="grid" id="inventoryGrid">
+    <!-- Inventory items will be injected here -->
+  </div>
 
   <script>
-    function submitToFirebase() {
-      const itemId = document.getElementById("itemId").value;
-      const itemName = document.getElementById("itemName").value;
-      const stockQty = parseInt(document.getElementById("stockQty").value, 10);
+    const dbUrl = "https://implant-e7d3a-default-rtdb.firebaseio.com/inventory.json";
+    let inventoryData = {};
 
-      const data = {
-        itemId: itemId,
-        item: itemName,
-        stockQty: stockQty,
-        timestamp: new Date().toISOString()
-      };
+    const barcodeInput = document.getElementById("barcodeInput");
+    const inventoryGrid = document.getElementById("inventoryGrid");
 
-      fetch(`https://implant-e7d3a-default-rtdb.firebaseio.com/inventory/${itemId}.json`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-      })
-      .then(res => res.json())
-      .then(result => {
-        alert("Data pushed successfully!");
-        console.log(result);
-      })
-      .catch(err => console.error("Error pushing data:", err));
+    function createCard(item, key) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.id = `card-${key}`;
+
+      const stockQty = parseInt(item["Stock Qty"]) || 0;
+
+      card.innerHTML = `
+        <h2>${item.Item || "Unnamed Item"}</h2>
+        <div class="details"><strong>ID:</strong> ${item["Item ID"] || "N/A"}</div>
+        <div class="details"><strong>Qty:</strong> <span id="qty-${key}">${stockQty}</span></div>
+        <div class="details"><strong>Storage:</strong> ${item.Storage || "N/A"}</div>
+        <div class="counter">
+          <button onclick="updateStock('${key}', -1)">−</button>
+          <span>${stockQty}</span>
+          <button onclick="updateStock('${key}', 1)">+</button>
+        </div>
+      `;
+      return card;
     }
+
+    function updateStock(key, delta) {
+      const item = inventoryData[key];
+      if (!item) return;
+
+      const qtySpan = document.getElementById(`qty-${key}`);
+      let currentQty = parseInt(item["Stock Qty"]) || 0;
+      let newQty = currentQty + delta;
+      if (newQty < 0) newQty = 0;
+
+      // Update UI
+      qtySpan.textContent = newQty;
+      inventoryData[key]["Stock Qty"] = newQty;
+
+      // Update Firebase
+      fetch(`https://implant-e7d3a-default-rtdb.firebaseio.com/inventory/${key}.json`, {
+        method: "PATCH",
+        body: JSON.stringify({ "Stock Qty": newQty }),
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    function loadInventory() {
+      fetch(dbUrl)
+        .then(res => res.json())
+        .then(data => {
+          inventoryData = data || {};
+          inventoryGrid.innerHTML = "";
+
+          Object.keys(data).forEach(key => {
+            const item = data[key];
+            const card = createCard(item, key);
+            inventoryGrid.appendChild(card);
+          });
+        });
+    }
+
+    barcodeInput.addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        const scannedID = barcodeInput.value.trim();
+        barcodeInput.value = "";
+
+        const itemKey = Object.keys(inventoryData).find(
+          key => inventoryData[key]["Item ID"] === scannedID
+        );
+
+        if (itemKey) {
+          updateStock(itemKey, 1);
+
+          const card = document.getElementById(`card-${itemKey}`);
+          if (card) {
+            card.classList.add("highlight");
+            setTimeout(() => card.classList.remove("highlight"), 2000);
+          }
+        } else {
+          alert("Item not found.");
+        }
+      }
+    });
+
+    loadInventory();
   </script>
 </body>
 </html>
