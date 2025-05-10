@@ -3,336 +3,259 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Implant Management</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap" rel="stylesheet">
+  <title>OrthoPod | Implant Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet"/>
   <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Product Sans', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: 'Roboto', sans-serif;
-      margin: 0;
-      background-color: #f4f4f4;
+      background-color: #f3f4f6;
     }
 
-    header {
-      background: url('https://cdn.sanity.io/images/0vv8moc6/hcplive/78eda403dd9651e86acc0a924c185a3e257228c7-5980x3829.jpg?fit=crop&auto=format') no-repeat center center;
-      background-size: cover;
+    /* Top navigation */
+    .top-nav {
+      background-color: #556b2f; /* olive green */
       color: white;
-      padding: 2rem;
-      text-align: center;
-      height: 300px; /* Set a specific height for the header */
-      background-position: center center;
-    }
-
-    header h1 {
-      font-size: 2.5rem;
-      margin: 0;
-      background-color: rgba(0,0,0,0.5);
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-    }
-
-    .search-container {
-      text-align: center;
-      padding: 1rem;
-    }
-
-    .search-container input {
-      padding: 0.5rem;
-      font-size: 1rem;
-      width: 70%;
-      max-width: 400px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      margin-right: 10px;
-    }
-
-    .search-container button {
-      padding: 0.5rem 1rem;
-      font-size: 1.2rem;
-      background-color: #4caf50;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    .search-container button img {
-      width: 20px;
-      height: 20px;
-      margin-right: 5px;
-    }
-
-    .filter-buttons {
-      margin-top: 1rem;
-      text-align: center;
-    }
-
-    .filter-buttons button {
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
-      background-color: #4285f4;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      margin: 0 5px;
-      cursor: pointer;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1rem;
-      padding: 1rem;
-      display: none; /* Hide the grid until search is clicked */
-    }
-
-    .card {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      padding: 1rem;
-      transition: border 0.3s, box-shadow 0.3s;
-      cursor: pointer;
-    }
-
-    .card:hover {
-      border: 3px solid #4caf50;
-      box-shadow: 0 0 15px #4caf50;
-    }
-
-    .card h2 {
-      font-size: 1.2rem;
-      margin: 0 0 0.5rem;
-      color: #222;
-    }
-
-    .counter {
+      padding: 10px 20px;
       display: flex;
-      justify-content: center;
       align-items: center;
-      margin-top: 0.5rem;
+      gap: 20px;
     }
 
-    .counter button {
-      background-color: #4285f4;
+    .logo {
+      font-size: 1.6rem;
+      font-weight: bold;
+      background: linear-gradient(90deg, #a8bfa1, #6e8c62); /* sage gradient */
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+    }
+
+    .search-bar {
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-bar select,
+    .search-bar input {
+      padding: 10px;
+      border: none;
+      outline: none;
+    }
+
+    .search-bar select {
+      background: #e6e6e6;
+      border-top-left-radius: 4px;
+      border-bottom-left-radius: 4px;
+    }
+
+    .search-bar input {
+      flex: 1;
+    }
+
+    .search-bar button {
+      background-color: #2e4c2f; /* navy green */
       color: white;
       border: none;
-      padding: 0.4rem 0.8rem;
-      font-size: 1rem;
-      border-radius: 5px;
+      padding: 10px 16px;
+      border-top-right-radius: 4px;
+      border-bottom-right-radius: 4px;
       cursor: pointer;
     }
 
-    .counter span {
-      margin: 0 1rem;
-      font-size: 1.1rem;
-      min-width: 30px;
-      text-align: center;
+    /* Category bar */
+    .category-bar {
+      background-color: #333333; /* dark grey */
+      padding: 8px 20px;
     }
 
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(0, 0, 0, 0.5);
-      z-index: 9999;
-      padding: 2rem;
+    .category-links {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
     }
 
-    .modal-content {
-      background: white;
-      border-radius: 8px;
-      padding: 2rem;
-      max-width: 600px;
-      margin: auto;
+    .category-item {
       position: relative;
     }
 
-    /* Close button styles */
-    .modal .close {
-      background-color: #f44336;
+    .category-item a {
       color: white;
-      padding: 0.5rem;
-      border-radius: 50%;
-      font-size: 1.5rem;
-      cursor: pointer;
-      position: absolute;
-      top: 10px;
-      right: 10px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 6px 4px;
+      display: block;
     }
 
-    .modal input {
-      padding: 1rem;
-      font-size: 1.2rem;
-      width: 100%;
-      max-width: 400px;
+    .category-item:hover .dropdown {
+      display: block;
+    }
+
+    .category-item .dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background-color: white;
+      color: black;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 999;
+      min-width: 180px;
+    }
+
+    .category-item .dropdown a {
+      color: black;
+      padding: 10px;
+      display: block;
+      text-decoration: none;
+    }
+
+    .category-item .dropdown a:hover {
+      background-color: #f0f0f0;
+    }
+
+    /* Carousel */
+    .carousel {
+      background-color: white;
+      margin: 20px;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .carousel h2 {
+      margin-bottom: 10px;
+    }
+
+    .carousel-images {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+    }
+
+    .carousel-images img {
+      max-height: 150px;
       border-radius: 8px;
-      border: 1px solid #ccc;
+    }
+
+    /* Grids below */
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 0 20px 40px;
+    }
+
+    .grid-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    .grid-card h3 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    .grid-card img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .grid-card p {
+      font-size: 0.85rem;
+      color: #555;
+      margin-top: 6px;
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>Implant Management</h1>
-  </header>
-
-  <div class="search-container">
-    <input type="text" id="searchBar" placeholder="Search..." />
-    <button onclick="searchItems()"><img src="https://img.icons8.com/ios/452/search.png" alt="Search Icon">Search</button>
-  </div>
-
-  <div class="filter-buttons">
-    <button onclick="setFilter('Item')">Item</button>
-    <button onclick="setFilter('Item ID')">Item ID</button>
-    <button onclick="setFilter('Supplier')">Supplier</button>
-    <button onclick="setFilter('System')">System</button>
-  </div>
-
-  <div class="grid" id="inventoryGrid">
-    <!-- Inventory items will be injected here -->
-  </div>
-
-  <div class="modal" id="itemModal">
-    <div class="modal-content">
-      <button class="close" id="closeModalBtn">&times;</button>
-      <h2 id="modalItemName"></h2>
-      <div id="modalDetails"></div>
-      <div class="counter">
-        <button onclick="updateStock(-1)">−</button>
-        <span id="modalQty">0</span>
-        <button onclick="updateStock(1)">+</button>
-      </div>
-      <br><br>
-      <input type="text" id="barcodeInput" placeholder="Scan Item ID to Adjust Stock">
+  <!-- Top Nav -->
+  <nav class="top-nav">
+    <div class="logo">OrthoPod Implant Management</div>
+    <div class="search-bar">
+      <select>
+        <option>All</option>
+        <option>Implants</option>
+        <option>Instruments</option>
+        <option>Systems</option>
+      </select>
+      <input type="text" placeholder="Search implants, suppliers, or systems..."/>
+      <button>🔍</button>
     </div>
-  </div>
+  </nav>
 
-  <script>
-    const dbUrl = "https://implant-e7d3a-default-rtdb.firebaseio.com/inventory.json";
-    let inventoryData = {};
+  <!-- Category Bar -->
+  <nav class="category-bar">
+    <div class="category-links">
+      <div class="category-item"><a href="#">All</a></div>
+      <div class="category-item"><a href="#">Depuy Synthes</a></div>
+      <div class="category-item"><a href="#">Stryker</a></div>
+      <div class="category-item"><a href="#">Acumed</a></div>
+      <div class="category-item"><a href="#">Arthrex</a></div>
+      <div class="category-item"><a href="#">Paragon</a></div>
+      <div class="category-item"><a href="#">Silony Medical</a></div>
+      <div class="category-item"><a href="#">B. Braun</a></div>
+      <div class="category-item"><a href="#">Leda</a></div>
+      <div class="category-item"><a href="#">Lima/Enovis</a></div>
+      <div class="category-item"><a href="#">Osteotec</a></div>
+      <div class="category-item"><a href="#">Wright Medical</a></div>
+    </div>
+  </nav>
 
-    const inventoryGrid = document.getElementById("inventoryGrid");
-    const itemModal = document.getElementById("itemModal");
-    const closeModalBtn = document.getElementById("closeModalBtn");
-    const modalItemName = document.getElementById("modalItemName");
-    const modalDetails = document.getElementById("modalDetails");
-    const modalQty = document.getElementById("modalQty");
-    const barcodeInput = document.getElementById("barcodeInput");
-    const searchBar = document.getElementById("searchBar");
+  <!-- Training Events Carousel -->
+  <section class="carousel">
+    <h2>Training Events or Workshops</h2>
+    <div class="carousel-images">
+      <img src="https://via.placeholder.com/300x150?text=Trauma+Workshop" alt="Event 1"/>
+      <img src="https://via.placeholder.com/300x150?text=Knee+Implant+Demo" alt="Event 2"/>
+      <img src="https://via.placeholder.com/300x150?text=New+Product+Launch" alt="Event 3"/>
+    </div>
+  </section>
 
-    let currentItemKey = "";
-    let filterBy = "Item";  // Default filter is Item
+  <!-- Implant Management Sections -->
+  <section class="section-grid">
+    <div class="grid-card">
+      <h3>Missing Implants</h3>
+      <img src="https://via.placeholder.com/250x120" alt="link"/>
+      <p>Items to be replaced or restocked</p>
+    </div>
 
-    function createCard(item, key) {
-      const card = document.createElement("div");
-      card.className = "card";
-      card.id = `card-${key}`;
+    <div class="grid-card">
+      <h3>Recently Delivered</h3>
+      <img src="https://via.placeholder.com/250x120" alt="link 2"/>
+      <p>Scanned Items</p>
+    </div>
 
-      const stockQty = parseInt(item["Stock Qty"]) || 0;
+    <div class="grid-card">
+      <h3>Pending Orders</h3>
+      <img src="https://via.placeholder.com/250x120" alt="PO History"/>
+      <p>Based on historical use</p>
+    </div>
 
-      card.innerHTML = `
-        <h2 onclick="openModal('${key}')">${item.Item || "Unnamed Item"}</h2>
-      `;
-      return card;
-    }
+    <div class="grid-card">
+      <h3>Explore by Category</h3>
+      <img src="https://via.placeholder.com/250x120" alt="link 4"/>
+      <p>Trauma, Joints, Spine, etc.</p>
+    </div>
 
-    function openModal(itemKey) {
-      const item = inventoryData[itemKey];
-      if (!item) return;
+    <div class="grid-card">
+      <h3>Requested items</h3>
+      <img src="https://via.placeholder.com/250x120" alt="link 5"/>
+      <p>View information on loan equipment</p>
+    </div>
+  </section>
 
-      currentItemKey = itemKey;
-      modalItemName.textContent = item.Item || "Unnamed Item";
-
-      let detailsHtml = `
-        <p><strong>Item ID:</strong> ${item["Item ID"] || "N/A"}</p>
-        <p><strong>Stock Qty:</strong> <span id="qty-${itemKey}">${item["Stock Qty"] || 0}</span></p>
-        <p><strong>Storage:</strong> ${item.Storage || "N/A"}</p>
-        <p><strong>Usage:</strong> ${item.Usage || "N/A"}</p>
-        <p><strong>Consignment:</strong> ${item.Cons || "N/A"}</p>
-        <p><strong>Status:</strong> ${item.Status || "N/A"}</p>
-        <p><strong>Audit Frequency:</strong> ${item["Audit Freq"] || "N/A"}</p>
-        <p><strong>Last Checked:</strong> ${item["Last Chk"] || "N/A"}</p>
-        <p><strong>Comments:</strong> ${item.Comments || "N/A"}</p>
-      `;
-      modalDetails.innerHTML = detailsHtml;
-
-      modalQty.textContent = item["Stock Qty"] || 0;
-
-      itemModal.style.display = "block";
-    }
-
-    function closeModal() {
-      itemModal.style.display = "none";
-    }
-
-    function updateStock(delta) {
-      const item = inventoryData[currentItemKey];
-      if (!item) return;
-
-      const qtySpan = document.getElementById(`qty-${currentItemKey}`);
-      let currentQty = parseInt(item["Stock Qty"]) || 0;
-      let newQty = currentQty + delta;
-      if (newQty < 0) newQty = 0;
-
-      // Update UI
-      qtySpan.textContent = newQty;
-      modalQty.textContent = newQty;
-      inventoryData[currentItemKey]["Stock Qty"] = newQty;
-
-      // Update Firebase
-      fetch(`https://implant-e7d3a-default-rtdb.firebaseio.com/inventory/${currentItemKey}.json`, {
-        method: "PATCH",
-        body: JSON.stringify({ "Stock Qty": newQty }),
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    function loadInventory() {
-      fetch(dbUrl)
-        .then(res => res.json())
-        .then(data => {
-          inventoryData = data || {};
-          inventoryGrid.innerHTML = "";
-
-          Object.keys(data).forEach(key => {
-            const item = data[key];
-            const card = createCard(item, key);
-            inventoryGrid.appendChild(card);
-          });
-        });
-    }
-
-    function setFilter(filter) {
-      filterBy = filter;
-    }
-
-    function searchItems() {
-      const searchTerm = searchBar.value.toLowerCase();
-      if (!searchTerm.trim()) return;
-
-      const cards = document.querySelectorAll(".card");
-      inventoryGrid.style.display = "grid";  // Show grid once search is triggered
-
-      cards.forEach(card => {
-        const itemKey = card.id.replace("card-", "");
-        const item = inventoryData[itemKey];
-        const itemField = item[filterBy] ? item[filterBy].toLowerCase() : "";
-
-        if (itemField.includes(searchTerm)) {
-          card.classList.add("show");
-        } else {
-          card.classList.remove("show");
-        }
-      });
-    }
-
-    closeModalBtn.addEventListener("click", closeModal);
-
-    loadInventory();
-  </script>
 </body>
 </html>
