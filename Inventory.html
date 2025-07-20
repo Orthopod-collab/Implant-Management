@@ -1,86 +1,139 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mobile Barcode Scanner</title>
+  <title>Inventory Manager (Firebase)</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      padding: 20px;
-      text-align: center;
-    }
-    input[type="text"] {
-      font-size: 24px;
-      padding: 10px;
-      width: 80%;
-      margin-bottom: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #ccc;
-    }
-    th {
-      background: #333;
-      color: #fff;
-    }
+    body { font-family: sans-serif; margin: 0; background: #f8fafd; color: #003087; }
+    header { padding: 1em; text-align: center; background: #005eb8; color: white; font-size: 1.5em; }
+    nav { display: flex; justify-content: center; background: #0072ce; }
+    nav button { padding: 1em; background: none; color: white; border: none; cursor: pointer; font-weight: bold; flex: 1; }
+    nav button.active { background: #005eb8; }
+    .content { padding: 1em; max-width: 800px; margin: 0 auto; }
+    .inventory-item { background: white; color: #003087; padding: 1em; margin: 1em 0; border-radius: 8px; border: 1px solid #b3d4fc; }
+    .inventory-item h4 { margin: 0 0 0.5em; }
+    .inventory-item img { max-width: 150px; margin-top: 0.5em; border: 1px solid #ccc; border-radius: 4px; }
+    form input, form textarea { display: block; width: 100%; margin: 0.5em 0; padding: 0.5em; border-radius: 4px; border: 1px solid #ccc; }
+    form button { background: #0072ce; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer; }
+    form button:hover { background: #005eb8; }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
-  <h1>Mobile Barcode Scanner</h1>
-  <input type="text" id="barcodeInput" placeholder="Scan barcode here" autofocus>
+  <header>Inventory Management (Firebase)</header>
+  <nav>
+    <button onclick="showTab('view')" class="active">View Stock</button>
+    <button onclick="showTab('register')">Register Stock</button>
+  </nav>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Scan</th>
-        <th>Timestamp</th>
-      </tr>
-    </thead>
-    <tbody id="scanTable">
-    </tbody>
-  </table>
+  <div class="content">
+    <div id="view-tab" class="tab">
+      <h3>Current Inventory</h3>
+      <div id="inventory-list"></div>
+    </div>
 
-  <script>
-    const barcodeInput = document.getElementById('barcodeInput');
-    const scanTable = document.getElementById('scanTable');
-    const webAppUrl = 'https://script.google.com/macros/s/AKfycbzdQuSQsxMX_1kamdwuRpFlIbi1ZztFzJ3k_ylnSXq-rmR83orpCPm7K_F_BEfPIPuA/exec';
+    <div id="register-tab" class="tab" style="display:none">
+      <h3>Register Inventory Item</h3>
+      <form id="inventory-form">
+        <input type="text" id="item-name" placeholder="Item" required />
+        <input type="text" id="item-sku" placeholder="Reference" required />
+        <input type="text" id="item-supplier" placeholder="Supplier" required />
+        <input type="text" id="item-lot" placeholder="Lot Number" required />
+        <input type="number" id="item-qty" placeholder="Quantity" required />
+        <input type="text" id="item-location" placeholder="Location" required />
+        <textarea id="item-desc" placeholder="Description"></textarea>
+        <input type="file" id="item-image" accept="image/*" capture="environment" />
+        <button type="submit">Save and Generate QR</button>
+      </form>
+    </div>
+  </div>
 
-    barcodeInput.addEventListener('change', function() {
-      const barcode = barcodeInput.value.trim();
-      if (barcode) {
-        const timestamp = new Date().toLocaleString();
+  <!-- Firebase Integration Script -->
+  <script type="module">
+    import { db, storage } from './firebase.js';
+    import {
+      collection, addDoc, onSnapshot, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import {
+      ref, uploadBytes, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
-        // Add to table display
-        const newRow = document.createElement('tr');
-        newRow.innerHTML = `<td>${barcode}</td><td>${timestamp}</td>`;
-        scanTable.prepend(newRow);
+    const form = document.getElementById('inventory-form');
+    const list = document.getElementById('inventory-list');
 
-        // Send to Google Sheets via Apps Script web app
-        fetch(webAppUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ barcode: barcode, timestamp: timestamp })
-        })
-        .then(response => response.text())
-        .then(result => console.log('Server response:', result))
-        .catch(error => console.error('Error:', error));
+    function showTab(tabId) {
+      document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(tab => tab.style.display = 'none');
+      document.querySelector(`button[onclick="showTab('${tabId}')"]`).classList.add('active');
+      document.getElementById(`${tabId}-tab`).style.display = 'block';
+    }
 
-        // Clear input after short delay
-        setTimeout(() => {
-          barcodeInput.value = '';
-          barcodeInput.focus();
-        }, 100);
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const imageFile = document.getElementById('item-image').files[0];
+      const sku = document.getElementById('item-sku').value;
+
+      const item = {
+        name: document.getElementById('item-name').value,
+        sku,
+        supplier: document.getElementById('item-supplier').value,
+        lot: document.getElementById('item-lot').value,
+        quantity: parseInt(document.getElementById('item-qty').value),
+        location: document.getElementById('item-location').value,
+        description: document.getElementById('item-desc').value,
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        if (imageFile) {
+          const imageRef = ref(storage, `inventory-images/${sku}_${Date.now()}`);
+          await uploadBytes(imageRef, imageFile);
+          item.imageUrl = await getDownloadURL(imageRef);
+        }
+
+        await addDoc(collection(db, "inventory"), item);
+        alert("Item saved and QR code generated!");
+        form.reset();
+        showTab('view');
+      } catch (err) {
+        console.error("Error saving item:", err);
+        alert("Failed to save item.");
       }
     });
+
+    // Realtime listener
+    function renderInventory() {
+      const q = query(collection(db, "inventory"), orderBy("createdAt", "desc"));
+      onSnapshot(q, (snapshot) => {
+        list.innerHTML = '';
+        snapshot.forEach((doc, index) => {
+          const item = doc.data();
+          const div = document.createElement('div');
+          div.className = 'inventory-item';
+          div.innerHTML = `
+            <h4>${item.name}</h4>
+            <p><strong>Reference:</strong> ${item.sku}</p>
+            <p><strong>Supplier:</strong> ${item.supplier}</p>
+            <p><strong>Lot:</strong> ${item.lot}</p>
+            <p><strong>Qty:</strong> ${item.quantity}</p>
+            <p><strong>Location:</strong> ${item.location}</p>
+            <p><strong>Description:</strong> ${item.description}</p>
+            ${item.imageUrl ? `<img src="${item.imageUrl}" alt="Item image" />` : ''}
+            <canvas id="qr-${index}"></canvas>
+          `;
+          list.appendChild(div);
+          new QRious({
+            element: document.getElementById(`qr-${index}`),
+            value: item.sku,
+            size: 150
+          });
+        });
+      });
+    }
+
+    renderInventory();
   </script>
 </body>
 </html>
